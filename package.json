@@ -4,7 +4,8 @@
   "description": "WhatsApp AI Agent for Al Huda eQuran Academy",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "build": "npx puppeteer browsers install chrome"
   },
   "keywords": [],
   "author": "",
