@@ -1,11 +1,10 @@
 {
   "name": "alhuda-bot",
   "version": "1.0.0",
-  "description": "",
+  "description": "WhatsApp AI Agent for Al Huda eQuran Academy",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "build": "puppeteer browsers install chrome"
+    "start": "node index.js"
   },
   "keywords": [],
   "author": "",
@@ -13,8 +12,8 @@
   "type": "commonjs",
   "dependencies": {
     "@google/genai": "^2.24.0",
-    "puppeteer": "^22.0.0",
     "qrcode-terminal": "^0.12.0",
-    "whatsapp-web.js": "^1.34.7"
+    "whatsapp-web.js": "^1.34.7",
+    "puppeteer": "24.38.0"
   }
 }
