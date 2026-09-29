@@ -1,77 +1,63 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
 const { GoogleGenAI } = require('@google/genai');
+const qrcode = require('qrcode-terminal');
 const fs = require('fs');
 
-// Line 7: Yahan apni copy ki hui Gemini API Key paste karein
-const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY_HERE"; 
-const ai = new GoogleGenAI({ apiKey: "AQ." });
+// Gemini AI Setup
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-// Knowledge Base File Load Karein
-const knowledgeBase = fs.readFileSync('knowledge_base.txt', 'utf8');
-
-// Chat Memory Store Karne Ke Liye
-const chatHistories = {};
+// Knowledge Base File Load
+let knowledgeBase = '';
+try {
+    knowledgeBase = fs.readFileSync('knowledge_base.txt', 'utf8');
+} catch (err) {
+    console.log('Knowledge base file not found or empty.');
+}
 
 // WhatsApp Client Setup
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        headless: true,
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--disable-gpu'
+        ]
     }
 });
 
-// QR Code Display Event
+// QR Code Event
 client.on('qr', (qr) => {
     console.log('\n--- SCAN THIS QR CODE WITH YOUR WHATSAPP ---\n');
     qrcode.generate(qr, { small: true });
 });
 
-// Bot Ready Event
+// Ready Event
 client.on('ready', () => {
     console.log('✅ Al Huda eQuran AI Bot is Live & Ready!');
 });
 
-// Message Receive Event
+// Message Event
 client.on('message', async (msg) => {
-    // Group Messages Ko Ignore Karein
-    if (msg.from.endsWith('@g.us')) return;
-
-    const userId = msg.from;
-    const userMessage = msg.body;
-
-    if (!chatHistories[userId]) {
-        chatHistories[userId] = [];
-    }
-
-    chatHistories[userId].push({ role: 'user', content: userMessage });
+    if (msg.fromMe || msg.isGroupMsg) return;
 
     try {
-        const systemPrompt = `
-You are the AI Assistant for Al Huda eQuran Academy.
-Strictly adhere to all instructions, course details, pricing, discount rules, language preferences, and trial flows in the Knowledge Base provided below.
-
-=== KNOWLEDGE BASE ===
-${knowledgeBase}
-======================
-`;
-
-        const formattedHistory = chatHistories[userId].map(h => `${h.role === 'user' ? 'Customer' : 'Agent'}: ${h.content}`).join('\n');
-        
-        const fullPrompt = `${systemPrompt}\n\nChat History:\n${formattedHistory}\n\nAgent:`;
-
+        const prompt = `You are a helpful assistant for Al Huda eQuran Academy. Use this knowledge base to answer: ${knowledgeBase}\n\nUser Question: ${msg.body}`;
         const response = await ai.models.generateContent({
-            model: 'gemini-1.5-flash',
-            contents: fullPrompt
+            model: 'gemini-2.5-flash',
+            contents: prompt,
         });
 
-        const reply = response.text.trim();
-        chatHistories[userId].push({ role: 'model', content: reply });
-
-        await msg.reply(reply);
-
+        if (response && response.text) {
+            await msg.reply(response.text);
+        }
     } catch (error) {
-        console.error('Error processing message:', error);
+        console.error('Error generating AI response:', error);
     }
 });
 
