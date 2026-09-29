@@ -34,7 +34,7 @@ server.listen(PORT, '0.0.0.0', () => {
 });
 
 // Puppeteer ke downloaded Chrome ka exact executable path use karein.
-const chromePath = puppeteer.executablePath();
+const chromePath = process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath();
 console.log(`Using Chrome: ${chromePath}`);
 
 // WhatsApp Client
