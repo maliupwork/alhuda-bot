@@ -1,7 +1,6 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const QRCode = require('qrcode');
 const { GoogleGenAI } = require('@google/genai');
-const puppeteer = require('puppeteer');
 const fs = require('fs');
 const http = require('http');
 
