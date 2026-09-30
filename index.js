@@ -1,5 +1,5 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
+const QRCode = require('qrcode');
 const { GoogleGenAI } = require('@google/genai');
 const puppeteer = require('puppeteer');
 const fs = require('fs');
@@ -21,12 +21,38 @@ const knowledgeBase = fs.readFileSync('knowledge_base.txt', 'utf8');
 
 // Simple in-memory chat history
 const chatHistories = {};
+let latestQR = null;
 
 // Render Web Service ko ek HTTP port chahiye.
 const PORT = process.env.PORT || 10000;
+
 const server = http.createServer((req, res) => {
-    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-    res.end('Al Huda eQuran AI Bot is running.');
+    if (req.url === '/qr' && latestQR) {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+
+        res.end(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <title>Al Huda WhatsApp QR</title>
+            </head>
+            <body style="font-family:Arial;text-align:center;padding:30px;">
+                <h2>Scan WhatsApp QR Code</h2>
+                <p>WhatsApp → Linked Devices → Link a Device</p>
+                <img src="${latestQR}" style="width:400px;max-width:90%;">
+                <p>Scan this QR code with your WhatsApp.</p>
+            </body>
+            </html>
+        `);
+        return;
+    }
+
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(`
+        <h2>Al Huda eQuran AI Bot is running.</h2>
+        <p>QR code is available at <a href="/qr">/qr</a></p>
+    `);
 });
 
 server.listen(PORT, '0.0.0.0', () => {
@@ -54,10 +80,19 @@ const client = new Client({
 });
 
 // QR Code
-client.on('qr', (qr) => {
-    console.log('\n--- SCAN THIS QR CODE WITH YOUR WHATSAPP ---\n');
-    qrcode.generate(qr, { small: true });
-    console.log('\n--- QR CODE END ---\n');
+client.on('qr', async (qr) => {
+    console.log('\n--- WHATSAPP QR CODE GENERATED ---\n');
+
+    try {
+        const qrDataUrl = await QRCode.toDataURL(qr);
+
+        console.log('QR code generated successfully.');
+        console.log('Open your Render service URL in a browser to view the QR code.');
+
+        latestQR = qrDataUrl;
+    } catch (error) {
+        console.error('❌ QR generation failed:', error);
+    }
 });
 
 // Ready
