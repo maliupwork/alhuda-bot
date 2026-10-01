@@ -65,8 +65,9 @@ const PORT = process.env.PORT || 10000;
 const server = http.createServer((req, res) => {
     if (req.url === '/qr') {
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-        res.end(`
-            
+        
+        // Nested backticks ka masla khatam karne ke liye variable use kiya hai
+        let qrContent = '
             
             
                 
