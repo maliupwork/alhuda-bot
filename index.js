@@ -249,9 +249,8 @@ server.listen(PORT, '0.0.0.0', () => {
 
 async function startWhatsAppBot() {
 
-    const { state, saveCreds } =
-        await useMultiFileAuthState('./auth_info_baileys');
-
+   const { state, saveCreds } =
+    await useMultiFileAuthState('./auth_info_baileys_new');
     const sock = makeWASocket({
         auth: state,
         printQRInTerminal: true,
