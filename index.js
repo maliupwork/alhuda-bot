@@ -12,108 +12,73 @@ if (!GEMINI_API_KEY) {
 }
 
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+const knowledgeBase = fs.existsSync('knowledge_base.txt') ? fs.readFileSync('knowledge_base.txt', 'utf8') : '';
 
-const knowledgeBase = fs.existsSync('knowledge_base.txt') 
-    ? fs.readFileSync('knowledge_base.txt', 'utf8') 
-    : 'No knowledge base.';
-
-const chatHistories = {};
-let latestQR = null;
 let connectionStatus = 'Initializing...';
 
-const PORT = process.env.PORT || 10000;
+// Render ke liye simple web server taaki port bind error na aaye
 const server = http.createServer((req, res) => {
-    if (req.url === '/qr') {
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-        let qrContent = '
-            if (req.url === '/qr') {
-    res.writeHead(200, {
-        'Content-Type': 'text/html; charset=utf-8'
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Al Huda Bot Status: ' + connectionStatus);
+});
+server.listen(process.env.PORT || 10000);
+
+async function startWhatsAppBot() {
+    const { state, saveCreds } = await useMultiFileAuthState('./auth_info_baileys');
+    const sock = makeWASocket({
+        auth: state,
+        printQRInTerminal: true,
+        logger: pino({ level: 'silent' })
     });
 
-    const qrContent = latestQR
-        ? `<img id="qr" src="${latestQR}" width="400" height="400">`
-        : `<h2 id="message">Waiting for WhatsApp QR Code...</h2>`;
+    sock.ev.on('creds.update', saveCreds);
 
-    res.end(`
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Al Huda WhatsApp QR</title>
-
-    <style>
-        body {
-            margin: 0;
-            padding: 30px;
-            background: #f3f4f6;
-            font-family: Arial, sans-serif;
-            text-align: center;
+    sock.ev.on('connection.update', async (update) => {
+        const { connection, lastDisconnect, qr } = update;
+        if (qr) {
+            connectionStatus = 'Waiting for QR scan...';
+            console.log('\n=== SCAN THIS QR CODE IN RENDER LOGS ===');
+            QRCode.toString(qr, { type: 'terminal', small: true }, (err, url) => {
+                if (!err) console.log(url);
+            });
         }
-
-        .box {
-            max-width: 500px;
-            margin: 30px auto;
-            background: white;
-            padding: 30px;
-            border-radius: 20px;
-            box-shadow: 0 5px 25px rgba(0,0,0,0.15);
+        if (connection === 'close') {
+            connectionStatus = 'Disconnected';
+            if (lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut) {
+                startWhatsAppBot();
+            }
+        } else if (connection === 'open') {
+            connectionStatus = 'Connected ✅';
+            console.log('✅ WhatsApp successfully connected!');
         }
+    });
 
-        h1 {
-            color: #064e3b;
+    sock.ev.on('messages.upsert', async ({ messages, type }) => {
+        if (type !== 'notify') return;
+        const msg = messages[0];
+        if (!msg.message || msg.key.fromMe) return;
+        
+        const remoteJid = msg.key.remoteJid;
+        if (remoteJid.endsWith('@g.us')) return;
+
+        const userMessage = msg.message.conversation || msg.message.extendedTextMessage?.text;
+        if (!userMessage) return;
+
+        try {
+            const fullPrompt = `You are AI for Al Huda eQuran Academy.\nKB:\n\({knowledgeBase}\n\nCustomer:\){userMessage}\nAgent:`;
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: fullPrompt
+            });
+
+            const reply = response.text?.trim();
+            if (reply) {
+                await sock.sendMessage(remoteJid, { text: reply });
+            }
+        } catch (error) {
+            console.error('Error processing message:', error);
         }
-
-        #qr {
-            display: block;
-            width: 400px;
-            max-width: 100%;
-            height: auto;
-            margin: 25px auto;
-        }
-
-        .status {
-            font-size: 18px;
-            font-weight: bold;
-            color: #064e3b;
-            margin-top: 20px;
-        }
-
-        .info {
-            color: #555;
-            margin-top: 15px;
-        }
-    </style>
-</head>
-
-<body>
-
-<div class="box">
-
-    <h1>Al Huda WhatsApp AI Bot</h1>
-
-    ${qrContent}
-
-    <div class="status">
-        ${connectionStatus}
-    </div>
-
-    <div class="info">
-        WhatsApp → Linked Devices → Link a Device
-    </div>
-
-</div>
-
-<script>
-    setTimeout(function() {
-        location.reload();
-    }, 5000);
-</script>
-
-</body>
-</html>
-    `);
-
-    return;
+    });
 }
+
+startWhatsAppBot();
