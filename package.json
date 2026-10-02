@@ -12,7 +12,7 @@
   "type": "commonjs",
   "dependencies": {
     "@google/genai": "^2.24.0",
-    "@whiskeysockets/baileys": "^6.7.12",
+   "@whiskeysockets/baileys": "^6.7.24",
     "pino": "^9.6.0",
     "qrcode": "^1.5.4"
   }
