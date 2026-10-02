@@ -370,9 +370,9 @@ async function startWhatsAppBot() {
                 `You are AI for Al Huda eQuran Academy.\nKB:\n\\(${knowledgeBase}\n\nCustomer:)${userMessage}\nAgent:`;
 
             const response = await ai.models.generateContent({
-                model: 'gemini-3.5-flash',
-                contents: fullPrompt
-            });
+    model: 'gemini-2.5-flash-lite',
+    contents: fullPrompt
+});
 
             const reply = response.text?.trim();
 
